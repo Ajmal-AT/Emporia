@@ -1,0 +1,4 @@
+PORT=1280
+DATABASE-URL=jdbc:postgresql://localhost:5432/emporia
+DATABASE-USERNAME=postgres
+DATABASE-PASSWORD=1234
