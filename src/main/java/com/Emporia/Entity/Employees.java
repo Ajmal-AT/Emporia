@@ -70,10 +70,6 @@ public class Employees {
     @JsonProperty(value = "department_id")
     private String departmentId;
 
-    @Column(name = "reporting_manager_id")
-    @JsonProperty(value = "reporting_manager_id")
-    private String reportingManagerId;
-
     @Column(name = "created_at", updatable = false)
     @JsonProperty(value = "created_at")
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
