@@ -42,6 +42,7 @@ public class EmployeesService {
 
         validateDuplicateEntries(employeesModel, null);
         setDepartment(employeesModel);
+        setReportingManager(employeesModel);
 
         Employees employees = mapToEntity(employeesModel, employeeId);
         employeesRepository.save(employees);
@@ -56,6 +57,8 @@ public class EmployeesService {
         validateEmployeeModel(employeesModel);
 
         boolean isDepartmentChange = false;
+        boolean isReportingManagerChange = false;
+
         employeesModel.setEmployeeId(employeeId);
 
         Employees employeeDetails = employeesRepository.findByEmployeeId(employeeId);
@@ -75,6 +78,14 @@ public class EmployeesService {
 
             setDepartment(employeesModel);
             isDepartmentChange = employeesModel.getDepartment() != null;
+        }
+
+        if (employeeDetails.getReportingManagerId() != null && employeesModel.getReportingManager() != null &&
+                employeesModel.getReportingManager().getEmployeeId() != null &&
+                !employeeDetails.getReportingManagerId().equalsIgnoreCase(employeesModel.getReportingManager().getEmployeeId())) {
+
+            setReportingManager(employeesModel);
+            isReportingManagerChange = employeesModel.getReportingManager() != null;
         }
 
         log.info("***** update employee details with employee id : {} || isDepartmentChange : {} *****", employeeId, isDepartmentChange);
@@ -104,6 +115,9 @@ public class EmployeesService {
         if (isDepartmentChange && employeesModel.getDepartment() != null && employeesModel.getDepartment().getDepartmentId() != null) {
             employeeDetails.setDepartmentId(employeesModel.getDepartment().getDepartmentId());
         }
+        if (isReportingManagerChange && employeesModel.getReportingManager() != null && employeesModel.getReportingManager().getEmployeeId() != null) {
+            employeeDetails.setReportingManagerId(employeesModel.getReportingManager().getEmployeeId());
+        }
         employeesRepository.save(employeeDetails);
 
         log.info("***** Employee updated successfully with employee id : {} *****", employeeId);
@@ -118,7 +132,7 @@ public class EmployeesService {
 
         Map<String, List<String>> departmentEmployeeMap = genericDataModel.getDepartmentEmployeesList();
         if (departmentEmployeeMap == null || departmentEmployeeMap.isEmpty()) {
-            throw new BadRequestException("Invalid Data", "Department to Employee mapping cannot be empty.");
+            throw new BadRequestException("Invalid Data", "Department to Employees mapping cannot be empty.");
         }
         List<String> departmentIds = new ArrayList<>(departmentEmployeeMap.keySet());
         List<String> employeeIds = departmentEmployeeMap.values().stream()
@@ -144,12 +158,26 @@ public class EmployeesService {
     public Page<EmployeesModel> getAllEmployeesDetails(PageRequest pageRequest) {
         Page<Employees> employeesList = employeesRepository.findAll(pageRequest);
 
-        List<String> employeesIds = employeesList.stream()
+        List<String> departmentIds = employeesList.stream()
                 .map(Employees::getDepartmentId)
                 .distinct()
                 .collect(Collectors.toList());
 
-        Map<String, Departments> departmentsMap = departmentsRepository.findAllByDepartmentIdIn(employeesIds)
+        List<String> reportingManagerIds = employeesList.stream()
+                .map(Employees::getReportingManagerId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<String, Employees> reportingManagerMap = employeesRepository.findAllByEmployeeIdIn(reportingManagerIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        Employees::getEmployeeId,
+                        emp -> emp,
+                        (existing, replacement) -> existing
+                ));
+
+        Map<String, Departments> departmentsMap = departmentsRepository.findAllByDepartmentIdIn(departmentIds)
                 .stream()
                 .collect(Collectors.toMap(
                         Departments::getDepartmentId,
@@ -157,13 +185,13 @@ public class EmployeesService {
                         (existing, replacement) -> existing
                 ));
 
-        List<String> departmentsIds = departmentsMap.values().stream()
+        List<String> departmentHeadIds = departmentsMap.values().stream()
                 .map(Departments::getDepartmentHeadId)
                 .filter(Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
 
-        Map<String, Employees> departmentHeadsMap = employeesRepository.findAllByEmployeeIdIn(departmentsIds)
+        Map<String, Employees> departmentHeadsMap = employeesRepository.findAllByEmployeeIdIn(departmentHeadIds)
                 .stream()
                 .collect(Collectors.toMap(
                         Employees::getEmployeeId,
@@ -173,8 +201,8 @@ public class EmployeesService {
 
         return employeesList.map(employee -> {
             EmployeesModel employeesModel = mapToEmployeeModel(employee);
-            Departments department = departmentsMap.get(employee.getDepartmentId());
 
+            Departments department = departmentsMap.get(employee.getDepartmentId());
             if (department != null) {
                 DepartmentsModel departmentsModel = mapToDepartmentModel(department);
                 Employees departmentHead = departmentHeadsMap.get(department.getDepartmentHeadId());
@@ -185,6 +213,12 @@ public class EmployeesService {
 
                 employeesModel.setDepartment(departmentsModel);
             }
+
+            Employees reportingManager = reportingManagerMap.get(employee.getReportingManagerId());
+            if (reportingManager != null) {
+                EmployeesModel reportingManagerModel = mapToEmployeeModel(reportingManager);
+                employeesModel.setReportingManager(reportingManagerModel);
+            }
             return employeesModel;
         });
     }
@@ -194,8 +228,9 @@ public class EmployeesService {
         if (employees == null) {
             throw new BadRequestException("Invalid Employee ID", "No employee found with ID: " + employeeId);
         }
-        Departments departments = departmentsRepository.findByDepartmentId(employees.getDepartmentId());
         EmployeesModel employeesModel = mapToEmployeeModel(employees);
+
+        Departments departments = departmentsRepository.findByDepartmentId(employees.getDepartmentId());
         if (departments != null) {
             DepartmentsModel departmentsModel = mapToDepartmentModel(departments);
 
@@ -206,18 +241,38 @@ public class EmployeesService {
 
             employeesModel.setDepartment(departmentsModel);
         }
+
+        Employees reportingManager = employeesRepository.findByEmployeeId(employees.getReportingManagerId());
+        if (reportingManager != null) {
+            EmployeesModel reportingManagerModel = mapToEmployeeModel(reportingManager);
+            employeesModel.setReportingManager(reportingManagerModel);
+        }
         return employeesModel;
     }
 
     public Page<EmployeesModel> getEmployeesNameAndEmployeesId(boolean lookup, PageRequest pageRequest) {
         Page<Employees> employeesList = employeesRepository.findAll(pageRequest);
 
-        List<String> employeesIds = employeesList.stream()
+        List<String> departmentsIds = employeesList.stream()
                 .map(Employees::getDepartmentId)
                 .distinct()
                 .collect(Collectors.toList());
 
-        Map<String, Departments> departmentsMap = departmentsRepository.findAllByDepartmentIdIn(employeesIds)
+        List<String> reportingManagerIds = employeesList.stream()
+                .map(Employees::getReportingManagerId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<String, Employees> reportingManagerMap = employeesRepository.findAllByEmployeeIdIn(reportingManagerIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        Employees::getEmployeeId,
+                        emp -> emp,
+                        (existing, replacement) -> existing
+                ));
+
+        Map<String, Departments> departmentsMap = departmentsRepository.findAllByDepartmentIdIn(departmentsIds)
                 .stream()
                 .collect(Collectors.toMap(
                         Departments::getDepartmentId,
@@ -225,13 +280,13 @@ public class EmployeesService {
                         (existing, replacement) -> existing
                 ));
 
-        List<String> departmentsIds = departmentsMap.values().stream()
+        List<String> departmentsHeadIds = departmentsMap.values().stream()
                 .map(Departments::getDepartmentHeadId)
                 .filter(Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
 
-        Map<String, Employees> departmentHeadsMap = employeesRepository.findAllByEmployeeIdIn(departmentsIds)
+        Map<String, Employees> departmentHeadsMap = employeesRepository.findAllByEmployeeIdIn(departmentsHeadIds)
                 .stream()
                 .collect(Collectors.toMap(
                         Employees::getEmployeeId,
@@ -242,12 +297,14 @@ public class EmployeesService {
         return employeesList.map(employee -> {
             EmployeesModel employeesModel = new EmployeesModel();
             if (lookup) {
+                employeesModel.setFirstName(employee.getFirstName());
+                employeesModel.setLastName(employee.getLastName());
                 employeesModel.setFullName(employee.getFullName());
                 employeesModel.setEmployeeId(employee.getEmployeeId());
             } else {
+                employeesModel = mapToEmployeeModel(employee);
 
                 Departments department = departmentsMap.get(employee.getDepartmentId());
-
                 if (department != null) {
                     DepartmentsModel departmentsModel = mapToDepartmentModel(department);
                     Employees departmentHead = departmentHeadsMap.get(department.getDepartmentHeadId());
@@ -257,6 +314,12 @@ public class EmployeesService {
                     }
 
                     employeesModel.setDepartment(departmentsModel);
+                }
+
+                Employees reportingManager = reportingManagerMap.get(employee.getReportingManagerId());
+                if (reportingManager != null) {
+                    EmployeesModel reportingManagerModel = mapToEmployeeModel(reportingManager);
+                    employeesModel.setReportingManager(reportingManagerModel);
                 }
             }
             return employeesModel;
@@ -283,14 +346,125 @@ public class EmployeesService {
         return employeesModel;
     }
 
+    @Transactional(rollbackOn = Exception.class)
+    public GenericDataModel assignEmployeeReportingManager(GenericDataModel genericDataModel) {
+        if (genericDataModel == null) {
+            throw new BadRequestException("Invalid Request", "Data model cannot be null.");
+        }
+
+        Map<String, List<String>> reportingManagerEmployeesMap = genericDataModel.getReportingManagerEmployeesList();
+        if (reportingManagerEmployeesMap == null || reportingManagerEmployeesMap.isEmpty()) {
+            throw new BadRequestException("Invalid Data", "Reporting Manager to Employees mapping cannot be empty.");
+        }
+        List<String> reportingManagersIds = new ArrayList<>(reportingManagerEmployeesMap.keySet());
+        List<String> employeeIds = reportingManagerEmployeesMap.values().stream()
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList());
+
+        List<Employees> employees = employeesRepository.findAllByEmployeeIdIn(employeeIds);
+        validateReportingManagerIsValid(reportingManagersIds);
+
+        for (String reportingManagerId : reportingManagersIds) {
+            List<String> assignedEmployeeIds = reportingManagerEmployeesMap.get(reportingManagerId);
+
+            employees.stream()
+                    .filter(employee -> assignedEmployeeIds.contains(employee.getEmployeeId()))
+                    .forEach(employee -> employee.setReportingManagerId(reportingManagerId));
+        }
+        if (!employees.isEmpty())
+            employeesRepository.saveAll(employees);
+
+        return genericDataModel;
+    }
+
+    @Transactional(rollbackOn = Exception.class)
+    public EmployeesModel updateEmployeeReportingManager(String employeeId, String reportingManagerId) {
+        if (employeeId == null || reportingManagerId == null) {
+            throw new BadRequestException("Invalid Input", "Employee ID and Reporting Manager ID cannot be null.");
+        }
+
+        List<String> employeeAndReportingManagerIds = Arrays.asList(employeeId, reportingManagerId);
+        List<Employees> employeesList = employeesRepository.findAllByEmployeeIdIn(employeeAndReportingManagerIds);
+        if (employeesList == null || employeesList.isEmpty()) {
+            throw new BadRequestException("Invalid Employee IDs", "No employee found with the provided IDs: " + employeeAndReportingManagerIds);
+        }
+
+        Employees reportingManager = employeesList.stream()
+                .filter(employee -> reportingManagerId.equalsIgnoreCase(employee.getEmployeeId()))
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException("Invalid Reporting Manager", "No reporting manager found with ID: " + reportingManagerId));
+
+        Employees employeeDetails = employeesList.stream()
+                .filter(employee -> employeeId.equalsIgnoreCase(employee.getEmployeeId()))
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException("Invalid Employee", "No employee found with ID: " + employeeId));
+
+        employeeDetails.setReportingManagerId(reportingManager.getEmployeeId());
+        employeesRepository.save(employeeDetails);
+
+        EmployeesModel employeesModel = mapToEmployeeModel(employeeDetails);
+        if (employeeDetails.getDepartmentId() != null) {
+            Departments department = departmentsRepository.findByDepartmentId(employeeDetails.getDepartmentId());
+            if (department != null) {
+                employeesModel.setDepartment(mapToDepartmentModel(department));
+            }
+        }
+        return employeesModel;
+    }
+
+    private void validateReportingManagerIsValid(List<String> reportingManagersIds) {
+        if (reportingManagersIds == null || reportingManagersIds.isEmpty()) {
+            throw new BadRequestException("Invalid Manager IDs", "Reporting manager IDs cannot be null or empty.");
+        }
+
+        List<Employees> reportingManagers = employeesRepository.findAllByEmployeeIdIn(reportingManagersIds);
+        if (reportingManagers == null || reportingManagers.isEmpty()) {
+            throw new BadRequestException("Invalid Manager IDs", "No valid reporting managers found.");
+        }
+
+        Set<String> existingManagerIds = reportingManagers.stream()
+                .map(Employees::getEmployeeId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        if (!existingManagerIds.containsAll(reportingManagersIds)) {
+            throw new BadRequestException("Invalid Manager IDs", "Some reporting managers do not exist.");
+        }
+
+        List<String> departmentIds = reportingManagers.stream()
+                .map(Employees::getDepartmentId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        if (departmentIds.isEmpty()) {
+            throw new BadRequestException("Invalid Department IDs", "No valid department IDs found for reporting managers.");
+        }
+
+        List<Departments> departmentsList = departmentsRepository.findAllByDepartmentIdIn(departmentIds);
+        if (departmentsList == null || departmentsList.isEmpty()) {
+            throw new BadRequestException("Invalid Department IDs", "No valid departments found.");
+        }
+
+        Set<String> existingDepartmentIds = departmentsList.stream()
+                .map(Departments::getDepartmentId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        if (!existingDepartmentIds.containsAll(departmentIds)) {
+            throw new BadRequestException("Invalid Department IDs", "Some departments do not exist.");
+        }
+    }
+
     private EmployeesModel mapToEmployeeModel(Employees employee) {
         EmployeesModel model = new EmployeesModel();
         model.setEmployeeId(employee.getEmployeeId());
+        model.setFirstName(employee.getFirstName());
+        model.setLastName(employee.getLastName());
         model.setFullName(employee.getFullName());
         model.setGender(employee.getGender());
         model.setEmail(employee.getEmail());
         model.setPhoneNumber(employee.getPhoneNumber());
         model.setSalary(employee.getSalary());
+        model.setRole(employee.getRole());
         model.setDateOfBirth(employee.getDateOfBirth());
         model.setDateOfJoining(employee.getDateOfJoining());
         model.setYearlyBonusPercentage(employee.getYearlyBonusPercentage());
@@ -327,21 +501,43 @@ public class EmployeesService {
     }
 
     private void setDepartment(EmployeesModel employeesModel) {
-        String departmentId = employeesModel.getDepartment() != null
-                ? employeesModel.getDepartment().getDepartmentId()
-                : null;
-
-        if (departmentId != null) {
-            Departments department = departmentsRepository.findByDepartmentId(departmentId);
-            if (department != null) {
-                DepartmentsModel departmentsModel = new DepartmentsModel();
-                departmentsModel.setDepartmentId(department.getDepartmentId());
-                departmentsModel.setDepartmentName(department.getDepartmentName());
-                employeesModel.setDepartment(departmentsModel);
-            } else {
-                employeesModel.setDepartment(null);
-            }
+        if (employeesModel == null || employeesModel.getDepartment() == null) {
+            return;
         }
+
+        String departmentId = employeesModel.getDepartment().getDepartmentId();
+        if (departmentId == null) {
+            return;
+        }
+
+        Departments departments = departmentsRepository.findByDepartmentId(departmentId);
+        if (departments == null) {
+            throw new BadRequestException("Invalid Department", "Department with ID " + departmentId + " does not exist.");
+        }
+
+        DepartmentsModel departmentsModel = new DepartmentsModel();
+        departmentsModel.setDepartmentId(departments.getDepartmentId());
+        departmentsModel.setDepartmentName(departments.getDepartmentName());
+
+        employeesModel.setDepartment(departmentsModel);
+    }
+
+    private void setReportingManager(EmployeesModel employeesModel) {
+        if (employeesModel == null || employeesModel.getReportingManager() == null) {
+            return;
+        }
+
+        String reportingManagerId = employeesModel.getReportingManager().getEmployeeId();
+        if (reportingManagerId == null) {
+            return;
+        }
+        Employees reportingManager = employeesRepository.findByEmployeeId(reportingManagerId);
+        if (reportingManager == null) {
+            throw new BadRequestException("Invalid Reporting Manager", "Reporting Manager with ID " + reportingManagerId + " does not exist.");
+        }
+
+        EmployeesModel reportingManagerModel = mapToEmployeeModel(reportingManager);
+        employeesModel.setReportingManager(reportingManagerModel);
     }
 
     private Employees mapToEntity(EmployeesModel employeesModel, String employeeId) {

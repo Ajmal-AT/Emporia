@@ -46,6 +46,9 @@ public class EmployeesModel {
     @JsonProperty(value = "gender")  // Gender options: MALE, FEMALE, TRANSGENDER, OTHER
     private String gender;
 
+    @JsonProperty(value = "reporting_manager")
+    private EmployeesModel reportingManager;
+
     @JsonProperty(value = "department")
     private DepartmentsModel department;
 
