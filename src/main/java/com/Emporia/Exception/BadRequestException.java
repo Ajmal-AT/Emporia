@@ -1,4 +1,4 @@
-package com.Emporia.exception;
+package com.Emporia.Exception;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;

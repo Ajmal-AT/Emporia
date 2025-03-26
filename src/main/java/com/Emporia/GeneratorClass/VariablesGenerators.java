@@ -1,6 +1,6 @@
 package com.Emporia.GeneratorClass;
 
-import com.Emporia.exception.BadRequestException;
+import com.Emporia.Exception.BadRequestException;
 import org.springframework.stereotype.Service;
 
 import java.util.Random;
