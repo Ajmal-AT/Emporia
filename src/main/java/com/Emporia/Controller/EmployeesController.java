@@ -55,4 +55,14 @@ public class EmployeesController {
         return employeesService.assignEmployeeDepartments(genericDataModel);
     }
 
+    @PutMapping("/assign-multi-reporting-manager")
+    public GenericDataModel assignEmployeeReportingManager(@RequestBody GenericDataModel genericDataModel) {
+        return employeesService.assignEmployeeReportingManager(genericDataModel);
+    }
+
+    @PutMapping("/{employeeId}/update-reporting-manager/{reportingManagerId}")
+    public EmployeesModel updateEmployeeReportingManager(@PathVariable String employeeId, @PathVariable String reportingManagerId) {
+        return employeesService.updateEmployeeReportingManager(employeeId, reportingManagerId);
+    }
+
 }

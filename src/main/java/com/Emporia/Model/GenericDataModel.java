@@ -18,4 +18,7 @@ public class GenericDataModel {
     @JsonProperty(value = "department_employees_list")
     private Map<String, List<String>> departmentEmployeesList;
 
+    @JsonProperty(value = "reporting_manager_employees_list")
+    private Map<String, List<String>> reportingManagerEmployeesList;
+
 }
