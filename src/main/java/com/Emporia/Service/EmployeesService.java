@@ -563,6 +563,10 @@ public class EmployeesService {
             employees.setDepartmentId(employeesModel.getDepartment().getDepartmentId());
         }
 
+        if (employeesModel.getReportingManager() != null && employeesModel.getReportingManager().getEmployeeId() != null) {
+            employees.setReportingManagerId(employeesModel.getReportingManager().getEmployeeId());
+        }
+
         return employees;
     }
 
