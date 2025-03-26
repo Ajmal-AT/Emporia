@@ -49,7 +49,4 @@ public class EmployeesModel {
     @JsonProperty(value = "department")
     private DepartmentsModel department;
 
-    @JsonProperty(value = "reporting_manager")
-    private EmployeesModel reportingManager;
-
 }
