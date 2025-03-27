@@ -24,13 +24,13 @@ import java.util.stream.Collectors;
 public class EmployeesService {
 
     @Autowired
-    EmployeesRepository employeesRepository;
+    private EmployeesRepository employeesRepository;
 
     @Autowired
-    DepartmentsRepository departmentsRepository;
+    private DepartmentsRepository departmentsRepository;
 
     @Autowired
-    VariablesGenerators variablesGenerators;
+    private VariablesGenerators variablesGenerators;
 
     @Transactional(rollbackOn = Exception.class)
     public EmployeesModel addEmployeesDetails(EmployeesModel employeesModel) {
@@ -44,7 +44,7 @@ public class EmployeesService {
         setDepartment(employeesModel);
         setReportingManager(employeesModel);
 
-        Employees employees = mapToEntity(employeesModel, employeeId);
+        Employees employees = mapToEmployeeEntity(employeesModel, employeeId);
         employeesRepository.save(employees);
 
         log.info("***** Employee added successfully with employee id : {} *****", employeeId);
@@ -104,7 +104,7 @@ public class EmployeesService {
         if (employeesModel.getYearlyBonusPercentage() != null) {
             employeeDetails.setYearlyBonusPercentage(employeesModel.getYearlyBonusPercentage());
         }
-        if (employeesModel.getRole() != null) {
+        if (!isNullOrEmpty(employeesModel.getRole())) {
             employeeDetails.setRole(employeesModel.getRole());
         }
 
@@ -112,10 +112,10 @@ public class EmployeesService {
         if (employeesModel.getGender() != null && validGenders.contains(employeesModel.getGender().toUpperCase())) {
             employeeDetails.setGender(employeesModel.getGender().toUpperCase());
         }
-        if (isDepartmentChange && employeesModel.getDepartment() != null && employeesModel.getDepartment().getDepartmentId() != null) {
+        if (isDepartmentChange && employeesModel.getDepartment() != null && !isNullOrEmpty(employeesModel.getDepartment().getDepartmentId())) {
             employeeDetails.setDepartmentId(employeesModel.getDepartment().getDepartmentId());
         }
-        if (isReportingManagerChange && employeesModel.getReportingManager() != null && employeesModel.getReportingManager().getEmployeeId() != null) {
+        if (isReportingManagerChange && employeesModel.getReportingManager() != null && !isNullOrEmpty(employeesModel.getReportingManager().getEmployeeId())) {
             employeeDetails.setReportingManagerId(employeesModel.getReportingManager().getEmployeeId());
         }
         employeesRepository.save(employeeDetails);
@@ -250,8 +250,8 @@ public class EmployeesService {
         return employeesModel;
     }
 
-    public Page<EmployeesModel> getEmployeesNameAndEmployeesId(boolean lookup, PageRequest pageRequest) {
-        Page<Employees> employeesList = employeesRepository.findAll(pageRequest);
+    public List<EmployeesModel> getEmployeesNameAndEmployeesId(boolean lookup) {
+        List<Employees> employeesList = employeesRepository.findAll();
 
         List<String> departmentsIds = employeesList.stream()
                 .map(Employees::getDepartmentId)
@@ -294,7 +294,7 @@ public class EmployeesService {
                         (existing, replacement) -> existing
                 ));
 
-        return employeesList.map(employee -> {
+        return employeesList.stream().map(employee -> {
             EmployeesModel employeesModel = new EmployeesModel();
             if (lookup) {
                 employeesModel.setFirstName(employee.getFirstName());
@@ -323,7 +323,7 @@ public class EmployeesService {
                 }
             }
             return employeesModel;
-        });
+        }).collect(Collectors.toList());
     }
 
     @Transactional(rollbackOn = Exception.class)
@@ -356,6 +356,7 @@ public class EmployeesService {
         if (reportingManagerEmployeesMap == null || reportingManagerEmployeesMap.isEmpty()) {
             throw new BadRequestException("Invalid Data", "Reporting Manager to Employees mapping cannot be empty.");
         }
+
         List<String> reportingManagersIds = new ArrayList<>(reportingManagerEmployeesMap.keySet());
         List<String> employeeIds = reportingManagerEmployeesMap.values().stream()
                 .flatMap(Collection::stream)
@@ -379,8 +380,8 @@ public class EmployeesService {
 
     @Transactional(rollbackOn = Exception.class)
     public EmployeesModel updateEmployeeReportingManager(String employeeId, String reportingManagerId) {
-        if (employeeId == null || reportingManagerId == null) {
-            throw new BadRequestException("Invalid Input", "Employee ID and Reporting Manager ID cannot be null.");
+        if (isNullOrEmpty(employeeId) || isNullOrEmpty(reportingManagerId)) {
+            throw new BadRequestException("Invalid Input", "Employee ID or Reporting Manager ID cannot be null.");
         }
 
         List<String> employeeAndReportingManagerIds = Arrays.asList(employeeId, reportingManagerId);
@@ -403,7 +404,7 @@ public class EmployeesService {
         employeesRepository.save(employeeDetails);
 
         EmployeesModel employeesModel = mapToEmployeeModel(employeeDetails);
-        if (employeeDetails.getDepartmentId() != null) {
+        if (!isNullOrEmpty(employeeDetails.getDepartmentId())) {
             Departments department = departmentsRepository.findByDepartmentId(employeeDetails.getDepartmentId());
             if (department != null) {
                 employeesModel.setDepartment(mapToDepartmentModel(department));
@@ -454,7 +455,7 @@ public class EmployeesService {
         }
     }
 
-    private EmployeesModel mapToEmployeeModel(Employees employee) {
+    public EmployeesModel mapToEmployeeModel(Employees employee) {
         EmployeesModel model = new EmployeesModel();
         model.setEmployeeId(employee.getEmployeeId());
         model.setFirstName(employee.getFirstName());
@@ -471,7 +472,7 @@ public class EmployeesService {
         return model;
     }
 
-    private DepartmentsModel mapToDepartmentModel(Departments department) {
+    public DepartmentsModel mapToDepartmentModel(Departments department) {
         DepartmentsModel model = new DepartmentsModel();
         model.setDepartmentId(department.getDepartmentId());
         model.setDepartmentName(department.getDepartmentName());
@@ -506,7 +507,7 @@ public class EmployeesService {
         }
 
         String departmentId = employeesModel.getDepartment().getDepartmentId();
-        if (departmentId == null) {
+        if (isNullOrEmpty(departmentId)) {
             return;
         }
 
@@ -528,7 +529,7 @@ public class EmployeesService {
         }
 
         String reportingManagerId = employeesModel.getReportingManager().getEmployeeId();
-        if (reportingManagerId == null) {
+        if (isNullOrEmpty(reportingManagerId)) {
             return;
         }
         Employees reportingManager = employeesRepository.findByEmployeeId(reportingManagerId);
@@ -540,7 +541,7 @@ public class EmployeesService {
         employeesModel.setReportingManager(reportingManagerModel);
     }
 
-    private Employees mapToEntity(EmployeesModel employeesModel, String employeeId) {
+    private Employees mapToEmployeeEntity(EmployeesModel employeesModel, String employeeId) {
         Employees employees = new Employees();
         employees.setEmployeeId(employeeId);
         employees.setFirstName(employeesModel.getFirstName());
@@ -559,11 +560,11 @@ public class EmployeesService {
         }
         employees.setGender(employeesModel.getGender().toUpperCase());
 
-        if (employeesModel.getDepartment() != null && employeesModel.getDepartment().getDepartmentId() != null) {
+        if (employeesModel.getDepartment() != null && !isNullOrEmpty(employeesModel.getDepartment().getDepartmentId())) {
             employees.setDepartmentId(employeesModel.getDepartment().getDepartmentId());
         }
 
-        if (employeesModel.getReportingManager() != null && employeesModel.getReportingManager().getEmployeeId() != null) {
+        if (employeesModel.getReportingManager() != null && !isNullOrEmpty(employeesModel.getReportingManager().getEmployeeId())) {
             employees.setReportingManagerId(employeesModel.getReportingManager().getEmployeeId());
         }
 

@@ -9,6 +9,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping(value = ConstantConfiguration.EMPLOYEES_ROUTE)
 public class EmployeesController {
@@ -38,11 +40,8 @@ public class EmployeesController {
     }
 
     @GetMapping("/get-name/lookup")
-    public Page<EmployeesModel> getEmployeesNameAndEmployeesId(@RequestParam(value = "lookup", defaultValue = "false") boolean lookup,
-                                                               @RequestParam(defaultValue = "0") int page,
-                                                               @RequestParam(defaultValue = "10") int size) {
-        PageRequest pageRequest = PageRequest.of(page, size);
-        return employeesService.getEmployeesNameAndEmployeesId(lookup, pageRequest);
+    public List<EmployeesModel> getEmployeesNameAndEmployeesId(@RequestParam(value = "lookup", defaultValue = "false") boolean lookup) {
+        return employeesService.getEmployeesNameAndEmployeesId(lookup);
     }
 
     @PutMapping("/{employeeId}/departments/{departmentId}")
