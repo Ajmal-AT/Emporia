@@ -28,7 +28,7 @@ public class Departments {
     @JsonProperty(value = "department_name")
     private String departmentName;
 
-    @Column(name = "description")
+    @Column(name = "description", columnDefinition = "TEXT")
     @JsonProperty(value = "description")
     private String description;
 
