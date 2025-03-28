@@ -2,7 +2,6 @@ package com.Emporia.Controller;
 
 import com.Emporia.Configuration.ConstantConfiguration;
 import com.Emporia.Model.DepartmentsModel;
-import com.Emporia.Model.EmployeesModel;
 import com.Emporia.Service.DepartmentsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -38,7 +37,7 @@ public class DepartmentsController {
     }
 
     @GetMapping("/{departmentId}")
-    public DepartmentsModel getDepartmentByIdWithExpand(@PathVariable String departmentId, @RequestParam(value = "expand", defaultValue = "all") String expand) {
+    public DepartmentsModel getDepartmentByIdWithExpand(@PathVariable String departmentId, @RequestParam(value = "expand", defaultValue = "all") String expand)  throws Exception {
         return departmentsService.getDepartmentsByDepartmentId(departmentId, expand);
     }
 
