@@ -10,6 +10,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import javax.persistence.Column;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class DepartmentsModel {
@@ -25,6 +26,9 @@ public class DepartmentsModel {
 
     @JsonProperty(value = "department_head")
     private EmployeesModel departmentHead;
+
+    @JsonProperty(value = "employees")
+    private List<EmployeesModel> employees;
 
     @JsonProperty(value = "creation_date")
     private LocalDateTime creationDate;
