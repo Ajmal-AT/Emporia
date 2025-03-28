@@ -1,7 +1,6 @@
 package com.Emporia.Service;
 
 import com.Emporia.Configuration.ConstantConfiguration;
-import com.Emporia.Configuration.CustomObjectMapper;
 import com.Emporia.Entity.Departments;
 import com.Emporia.Entity.Employees;
 import com.Emporia.Exception.BadRequestException;
@@ -35,8 +34,6 @@ public class DepartmentsService {
 
     @Autowired
     private VariablesGenerators variablesGenerators;
-
-    private static final CustomObjectMapper customObjectMapper = new CustomObjectMapper();
 
     @Transactional(rollbackOn = Exception.class)
     public DepartmentsModel addDepartmentsDetails(DepartmentsModel departmentsModel) {
@@ -205,7 +202,7 @@ public class DepartmentsService {
             existingDepartment.setDepartmentName(departmentsModel.getDepartmentName());
         }
 
-        existingDepartment.setDescription(customObjectMapper.writeAsString(departmentsModel.getDescription()));
+        existingDepartment.setDescription(departmentsModel.getDescription());
 
         if (departmentsModel.getDepartmentHead() != null && !isNullOrEmpty(departmentsModel.getDepartmentHead().getEmployeeId())) {
             existingDepartment.setDepartmentHeadId(departmentsModel.getDepartmentHead().getEmployeeId());
@@ -219,7 +216,6 @@ public class DepartmentsService {
         departmentsModel.setDepartmentId(departments.getDepartmentId());
         departmentsModel.setDepartmentName(departments.getDepartmentName());
         departmentsModel.setDescription(departments.getDescription());
-
 
         if (!isNullOrEmpty(departments.getDepartmentHeadId())) {
             Employees departmentHead = departmentHeadMap.get(departments.getDepartmentHeadId());
