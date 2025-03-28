@@ -413,6 +413,36 @@ public class EmployeesService {
         return employeesModel;
     }
 
+    @Transactional(rollbackOn = Exception.class)
+    public String deleteEmployeesDetailsByEmployeesId(String employeeId) {
+        Employees employees = employeesRepository.findByEmployeeId(employeeId);
+        if (employees == null) {
+            throw new BadRequestException("Invalid Employee", "Employee with employee id " + employeeId + " not found.");
+        }
+
+        if (!isNullOrEmpty(employees.getDepartmentId())) {
+            Departments departments = departmentsRepository.findByDepartmentId(employees.getDepartmentId());
+            if (departments == null) {
+                throw new BadRequestException("Invalid Department", "Department with ID " + employees.getDepartmentId() + " not found.");
+            }
+        }
+
+        List<Departments> departmentsList = departmentsRepository.findAllByDepartmentHeadId(employees.getEmployeeId());
+        if (!departmentsList.isEmpty()) {
+            departmentsList.forEach(departments -> departments.setDepartmentHeadId(null));
+            departmentsRepository.saveAll(departmentsList);
+        }
+
+        List<Employees> employeesList = employeesRepository.findAllByReportingManagerId(employees.getEmployeeId());
+        if (!employeesList.isEmpty()) {
+            employeesList.forEach(employee -> employee.setReportingManagerId(null));
+            employeesRepository.saveAll(employeesList);
+        }
+
+        employeesRepository.deleteById(employees.getId());
+        return "Employee deleted successfully.";
+    }
+
     private void validateReportingManagerIsValid(List<String> reportingManagersIds) {
         if (reportingManagersIds == null || reportingManagersIds.isEmpty()) {
             throw new BadRequestException("Invalid Manager IDs", "Reporting manager IDs cannot be null or empty.");
@@ -490,8 +520,8 @@ public class EmployeesService {
     }
 
     private void validateDuplicateEntries(EmployeesModel employeesModel, Employees employeeDetails) {
-        boolean isEmailChanged = employeeDetails != null && !employeeDetails.getEmail().equalsIgnoreCase(employeesModel.getEmail());
-        boolean isPhoneChanged = employeeDetails != null && !employeeDetails.getPhoneNumber().equalsIgnoreCase(employeesModel.getPhoneNumber());
+        boolean isEmailChanged = employeeDetails == null || !employeeDetails.getEmail().equalsIgnoreCase(employeesModel.getEmail());
+        boolean isPhoneChanged = employeeDetails == null || !employeeDetails.getPhoneNumber().equalsIgnoreCase(employeesModel.getPhoneNumber());
 
         if (isEmailChanged && employeesRepository.existsByEmail(employeesModel.getEmail())) {
             throw new BadRequestException("Duplicate Email", "Email already exists.");
