@@ -1,7 +1,6 @@
 package com.Emporia.Model;
 
 import lombok.Data;
-import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 import java.io.Serializable;
