@@ -10,14 +10,15 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 @EqualsAndHashCode(callSuper = true)
 public class BadRequestException extends RuntimeException {
 
-    private final String localmessage;
+    private final String localMessage;
     private final String message;
     private final HttpStatus status;
 
-    public BadRequestException(String message , String localmessage) {
+    public BadRequestException(String message , String localMessage) {
         super(message) ;
-        this.localmessage = localmessage;
+        this.localMessage = localMessage;
         this.message = message;
         this.status = HttpStatus.BAD_REQUEST;
     }
+
 }
