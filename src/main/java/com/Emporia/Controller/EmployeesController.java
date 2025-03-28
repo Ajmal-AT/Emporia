@@ -64,4 +64,9 @@ public class EmployeesController {
         return employeesService.updateEmployeeReportingManager(employeeId, reportingManagerId);
     }
 
+    @DeleteMapping("/{employeeId}")
+    public String deleteEmployeeId(@PathVariable String employeeId) {
+        return employeesService.deleteEmployeesDetailsByEmployeesId(employeeId);
+    }
+
 }
